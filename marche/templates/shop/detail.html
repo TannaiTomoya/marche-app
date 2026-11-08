@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "_form_errors.html" import field %}
+{% block title %}{{ product.name }} | はちまん産直マルシェ{% endblock %}
+{% block content %}
+<article>
+  <h1>{{ product.name }}</h1>
+  {% if not product.is_published %}
+    <p><mark>非公開（購入者には見えません）</mark></p>
+  {% endif %}
+  {% if product.image_filename %}
+    <img src="{{ url_for('static', filename='uploads/' ~ product.image_filename) }}" alt="{{ product.name }}" style="max-width:480px">
+  {% endif %}
+  <p><strong>{{ product.price|yen }}</strong>（税込み）</p>
+  <p>生産者: {{ product.producer.name }}</p>
+  <p style="white-space: pre-wrap">{{ product.description }}</p>
+
+  {% if available > 0 %}
+    <p>在庫 {{ available }}</p>
+    {% if product.is_published %}
+    <form method="post" action="{{ url_for('cart.add', product_id=product.id) }}">
+      {{ form.hidden_tag() }}
+      <label>
+        {{ form.quantity.label.text }}
+        <select name="quantity">
+          {% for n in range(1, max_quantity + 1) %}<option value="{{ n }}">{{ n }}</option>{% endfor %}
+        </select>
+      </label>
+      <button type="submit">カートに入れる</button>
+    </form>
+    {% endif %}
+  {% else %}
+    <p><mark>売り切れ</mark></p>
+  {% endif %}
+</article>
+<p><a href="{{ url_for('shop.index') }}">商品一覧へ戻る</a></p>
+{% endblock %}

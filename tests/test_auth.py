@@ -26,6 +26,7 @@ def test_トップページが表示される(client):
 def test_生産者として登録できる(client):
     response = register(client, "producer")
     assert response.status_code == 302
+    assert response.headers["Location"] == "/producer/products"
     user = db.session.scalar(db.select(User).filter_by(email="t@example.com"))
     assert user.role == Role.PRODUCER
     assert user.password_hash != "password123"  # パスワードはハッシュで保存する

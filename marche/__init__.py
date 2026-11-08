@@ -14,6 +14,9 @@ def create_app(config=None):
             "DATABASE_URL", "sqlite:///marche.sqlite"
         ),
         SESSION_COOKIE_SECURE=os.environ.get("SESSION_COOKIE_SECURE") == "1",
+        UPLOAD_FOLDER=os.path.join(app.root_path, "static", "uploads"),
+        # 写真は 5MB まで（services/uploads.py で確かめる）。フォームの他の項目の分を足す
+        MAX_CONTENT_LENGTH=6 * 1024 * 1024,
     )
     if config is not None:
         app.config.update(config)
@@ -30,9 +33,9 @@ def create_app(config=None):
     login_manager.login_view = "auth.login"
     login_manager.login_message = "ログインしてください"
 
-    from marche.views import auth, shop
+    from marche.views import auth, cart, orders, producer, shop
 
-    for module in (auth, shop):
+    for module in (auth, shop, producer, cart, orders):
         app.register_blueprint(module.bp)
 
     from marche import commands
@@ -42,6 +45,12 @@ def create_app(config=None):
     @app.template_filter("yen")
     def yen(value: int) -> str:
         return f"{value:,}円"
+
+    @app.template_filter("jdatetime")
+    def jdatetime(value) -> str:
+        """「11月14日(土) 10:00」の形にする"""
+        weekday = "月火水木金土日"[value.weekday()]
+        return f"{value.month}月{value.day}日({weekday}) {value:%H:%M}"
 
     @app.errorhandler(403)
     def forbidden(error):
