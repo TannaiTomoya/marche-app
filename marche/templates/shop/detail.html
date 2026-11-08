@@ -8,7 +8,7 @@
     <p><mark>非公開（購入者には見えません）</mark></p>
   {% endif %}
   {% if product.image_filename %}
-    <img src="{{ url_for('static', filename='uploads/' ~ product.image_filename) }}" alt="{{ product.name }}" style="max-width:480px">
+    <img src="{{ url_for('static', filename='uploads/' ~ product.image_filename) }}" alt="{{ product.name }}" style="max-width:min(100%, 480px); height:auto">
   {% endif %}
   <p><strong>{{ product.price|yen }}</strong>（税込み）</p>
   <p>生産者: {{ product.producer.name }}</p>

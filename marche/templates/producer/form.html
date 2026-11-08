@@ -12,7 +12,7 @@
   {% if product and product.image_filename %}
     <p>
       いまの写真:<br>
-      <img src="{{ url_for('static', filename='uploads/' ~ product.image_filename) }}" alt="{{ product.name }}" style="max-width:200px">
+      <img src="{{ url_for('static', filename='uploads/' ~ product.image_filename) }}" alt="{{ product.name }}" style="max-width:min(100%, 200px); height:auto">
     </p>
   {% endif %}
   {{ field(form.image) }}
