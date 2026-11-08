@@ -49,29 +49,29 @@
 
 ## 設計（Day4 以降に追記していく）
 
-- 仕様: `docs/spec/`（参考解答。食い違うときは `docs/design/` を優先する）
-- ユーザーストーリー: [docs/design/user-stories.md](docs/design/user-stories.md)
-- 画面一覧: [docs/design/screens.md](docs/design/screens.md)
-- データベース設計: [docs/design/database.md](docs/design/database.md)
-- 用語: 生産者（producer。商品を出品する）、購入者（customer。商品を買う）、管理者（admin。`flask create-admin` だけで作る）、商品（products の1行）、カート（セッションの `{"商品ID": 数量}`。テーブルにしない）、注文（orders。1回の支払い）、注文明細（order_items。注文の中の商品1つ分）
+- 詳細: [ユーザーストーリー](docs/design/user-stories.md)、[画面一覧](docs/design/screens.md)、[データベース設計](docs/design/database.md)、仕様 `docs/spec/`（参考解答。食い違うときは `docs/design/` を優先する）
+- 用語: 生産者（producer。商品を出品する）、購入者（customer。商品を買う）、管理者（admin。`flask create-admin` だけで作る）、商品（products の1行）、在庫数（いまある数）、カート（セッションの `{"商品ID": 数量}`。テーブルにしない）、注文（orders。1回の支払い）、注文明細（order_items。注文の中の商品1つ分）
 
 ### データと在庫
 
-- 出品者は `products.producer_id`、注文者は `orders.user_id`（どちらも users.id）。名前で区別する
-- 注文の状態は `OrderStatus`（StrEnum）で `pending` → `paid` / `cancelled`。`pending` のときだけ `paid` に変える条件付きの更新にし、変えられたときだけ在庫を減らす
+- テーブル: users 1-多 products（`producer_id`。出品者）、users 1-多 orders（`user_id`。注文者）1-多 order_items 多-1 products
+- 状態: `orders.status` = `pending`（支払い待ち）/ `paid`（支払い済み）/ `cancelled`（取り消し）。`OrderStatus`（StrEnum）で扱う。`pending` のときだけ `paid` に変える条件付きの UPDATE にし、変えられたときだけ在庫を減らしてメールを送る（`services/inventory.py` の `mark_as_paid`）
 - 明細には注文時点の `product_name`・`unit_price`・`subtotal` を保存し、注文の表示や売上の集計には明細の値を使う
 - 削除: orders → order_items は cascade、products → order_items は restrict。注文がある商品はビューでも削除を断り、非公開にしてもらう
 - `products.stock` は「いまある数」。支払いが確定したときに減らす
 - いま買える数は `marche/services/inventory.py` の `available_stock(product)` だけで計算する（stock − 作成から35分以内の pending の数量。0未満は0）。Checkout Session の期限は31分
+- 写真は `marche/services/uploads.py` の `save_image()` で確かめ、`marche/static/uploads/` に UUID のファイル名で保存する（設定 `UPLOAD_FOLDER`。テストでは一時フォルダー）
 
 ### 画面と URL
 
 - URL の接頭辞で持ち主を分ける: `/producer/`（生産者）、`/orders/`（ログインユーザー）、`/cart/`（誰でも）
+- 認可: ロールは `@role_required`、所有者は `get_own_product_or_403()`・`get_own_order_or_403()` で1件ずつ確かめる。非公開の商品は `shop.can_view()`（出品者と管理者以外 404）
 - 値を変える操作（削除、公開の切り替え、カートの変更、注文の作成）は POST だけの URL にする。GET で値を変えない
 - 管理者の画面は `/admin/` に置き、`@role_required(Role.ADMIN)` で守る。コアは注文一覧（`/admin/orders`）だけ
 
 ### 外部サービスとテスト
 
 - Stripe を呼ぶコードは `marche/services/payment.py` だけに書く（AI 機能を足すなら、Claude API は `marche/services/ai.py` だけ）
+- Stripe: Checkout（金額は注文明細から。`jpy` は円のまま）。Webhook は `POST /stripe/webhook` で CSRF の対象外にし、署名を確かめ、`checkout.session.completed` だけを扱う。完了ページからも同じ `mark_as_paid` で確定する
 - テストでは本物の API を呼ばず、`create_app({"PAYMENT_SERVICE": FakePayment()})` のように設定でフェイクに差し替える
 - （AI 機能を足した場合）AI の出力はそのまま保存・公開しない。フォームの欄に入れるだけにし、人が確認して「保存」を押したときに初めて保存する
