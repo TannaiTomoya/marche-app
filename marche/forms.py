@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from flask_wtf.file import FileField
+from flask_wtf.file import FileAllowed, FileField, FileSize
 from wtforms import (
     BooleanField,
     EmailField,
@@ -12,6 +12,9 @@ from wtforms import (
 from wtforms.validators import DataRequired, InputRequired, Length, NumberRange, Regexp
 
 from marche.models import Role
+
+# 写真の上限。Claude API が受け取れる画像の上限（5MB）とも同じ
+MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
 # email-validator パッケージを足さずに済むよう、形だけを正規表現で確かめる
 EMAIL = Regexp(
@@ -55,8 +58,19 @@ class ProductForm(FlaskForm):
         ],
     )
     description = TextAreaField("紹介文", validators=[Length(max=2000)])
-    # 形式・中身・大きさは services/uploads.py で確かめる
-    image = FileField("写真（JPEG / PNG / WebP、5MB まで）")
+    # 拡張子と大きさはここで、中身はビューで detect_media_type() を使って確かめる
+    image = FileField(
+        "写真（JPEG / PNG / WebP、5MB まで）",
+        validators=[
+            FileAllowed(
+                ["jpg", "jpeg", "png", "webp"],
+                message="JPEG / PNG / WebP の画像を選んでください",
+            ),
+            FileSize(
+                max_size=MAX_IMAGE_BYTES, message="5MB 以下の画像を選んでください"
+            ),
+        ],
+    )
     is_published = BooleanField("公開する")
 
 

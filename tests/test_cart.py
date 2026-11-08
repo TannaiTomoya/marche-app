@@ -12,7 +12,7 @@ def test_未ログインでもカートに入れられる(client, producer, make
     assert response.status_code == 302
     assert cart_of(client) == {str(product.id): 2}
     text = client.get("/cart/").text
-    assert "ほうれん草 1束" in text
+    assert "ほうれん草" in text
     assert "360円" in text
 
 

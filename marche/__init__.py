@@ -15,7 +15,7 @@ def create_app(config=None):
         ),
         SESSION_COOKIE_SECURE=os.environ.get("SESSION_COOKIE_SECURE") == "1",
         UPLOAD_FOLDER=os.path.join(app.root_path, "static", "uploads"),
-        # 写真は 5MB まで（services/uploads.py で確かめる）。フォームの他の項目の分を足す
+        # 写真は 5MB まで（フォームの FileSize で確かめる）。それを超える巨大なリクエストは 413 で断る
         MAX_CONTENT_LENGTH=6 * 1024 * 1024,
         STRIPE_SECRET_KEY=os.environ.get("STRIPE_SECRET_KEY", ""),
         STRIPE_WEBHOOK_SECRET=os.environ.get("STRIPE_WEBHOOK_SECRET", ""),

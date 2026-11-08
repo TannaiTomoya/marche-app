@@ -1,8 +1,12 @@
 import io
 import os
+import re
+
+import pytest
 
 from marche.extensions import db
 from marche.models import Order, OrderItem, OrderStatus, Product
+from marche.uploads import detect_media_type
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
 
@@ -92,11 +96,12 @@ def test_PNGの写真を登録できる(app, client, producer, login):
 
 def test_中身が画像でなければ登録できない(client, producer, login):
     login(producer)
-    data = product_data(image=(io.BytesIO(b"<script>alert(1)</script>"), "photo.png"))
+    data = product_data(image=(io.BytesIO(b"<?php echo 1; ?>"), "photo.png"))
     response = client.post(
         "/producer/products/new", data=data, content_type="multipart/form-data"
     )
     assert response.status_code == 422
+    assert "画像として読み込めない" in response.text
     assert count_products() == 0
 
 
@@ -107,6 +112,18 @@ def test_GIFは登録できない(client, producer, login):
         "/producer/products/new", data=data, content_type="multipart/form-data"
     )
     assert response.status_code == 422
+    assert "JPEG / PNG / WebP の画像を選んでください" in response.text
+    assert count_products() == 0
+
+
+def test_拡張子を変えたGIFも中身で弾かれる(client, producer, login):
+    login(producer)
+    data = product_data(image=(io.BytesIO(b"GIF89a" + b"\x00" * 10), "photo.jpg"))
+    response = client.post(
+        "/producer/products/new", data=data, content_type="multipart/form-data"
+    )
+    assert response.status_code == 422
+    assert "画像として読み込めない" in response.text
     assert count_products() == 0
 
 
@@ -118,6 +135,7 @@ def test_5MBを超える写真は登録できない(client, producer, login):
         "/producer/products/new", data=data, content_type="multipart/form-data"
     )
     assert response.status_code == 422
+    assert "5MB 以下の画像を選んでください" in response.text
     assert count_products() == 0
 
 
@@ -147,7 +165,7 @@ def test_他人の商品は編集できない(
     )
     assert response.status_code == 403
     db.session.refresh(product)
-    assert product.name == "ほうれん草 1束"
+    assert product.name == "ほうれん草"
 
 
 def test_他人の商品は削除できない(
@@ -228,3 +246,132 @@ def test_出品管理には自分の商品だけが出る(
     text = client.get("/producer/products").text
     assert "自分のトマト" in text
     assert "他人のりんご" not in text
+
+
+def test_写真を差し替えると古いファイルが消える(app, client, producer, login):
+    login(producer)
+    client.post(
+        "/producer/products/new",
+        data=product_data(image=(io.BytesIO(PNG), "a.png")),
+        content_type="multipart/form-data",
+    )
+    product = db.session.scalar(db.select(Product))
+    old_path = os.path.join(app.config["UPLOAD_FOLDER"], product.image_filename)
+    assert os.path.exists(old_path)
+    client.post(
+        f"/producer/products/{product.id}/edit",
+        data=product_data(image=(io.BytesIO(PNG), "b.png")),
+        content_type="multipart/form-data",
+    )
+    db.session.refresh(product)
+    assert not os.path.exists(old_path)
+    new_path = os.path.join(app.config["UPLOAD_FOLDER"], product.image_filename)
+    assert os.path.exists(new_path)
+
+
+def test_商品を削除すると写真も消える(app, client, producer, login):
+    login(producer)
+    client.post(
+        "/producer/products/new",
+        data=product_data(image=(io.BytesIO(PNG), "a.png")),
+        content_type="multipart/form-data",
+    )
+    product = db.session.scalar(db.select(Product))
+    path = os.path.join(app.config["UPLOAD_FOLDER"], product.image_filename)
+    client.post(f"/producer/products/{product.id}/delete")
+    assert not os.path.exists(path)
+
+
+def test_detect_media_typeは中身で種類を判定する():
+    assert detect_media_type(b"\xff\xd8\xff\xe0rest") == "image/jpeg"
+    assert detect_media_type(PNG) == "image/png"
+    assert detect_media_type(b"RIFF\x00\x00\x00\x00WEBPVP8 ") == "image/webp"
+    assert detect_media_type(b"GIF89a") is None
+    assert detect_media_type(b"") is None
+
+
+# --- レビューの指摘で足したテスト ---
+
+
+def uploaded_files(app):
+    folder = app.config["UPLOAD_FOLDER"]
+    return os.listdir(folder) if os.path.exists(folder) else []
+
+
+def test_弾いたファイルは保存されない(app, client, producer, login):
+    login(producer)
+    for content, name in [(b"<?php echo 1; ?>", "photo.png"), (b"GIF89a", "a.gif")]:
+        client.post(
+            "/producer/products/new",
+            data=product_data(image=(io.BytesIO(content), name)),
+            content_type="multipart/form-data",
+        )
+    assert uploaded_files(app) == []
+
+
+def test_編集で不正な画像を送ると422で商品と写真は変わらない(
+    app, client, producer, login
+):
+    login(producer)
+    client.post(
+        "/producer/products/new",
+        data=product_data(image=(io.BytesIO(PNG), "a.png")),
+        content_type="multipart/form-data",
+    )
+    product = db.session.scalar(db.select(Product))
+    old_filename = product.image_filename
+    response = client.post(
+        f"/producer/products/{product.id}/edit",
+        data=product_data(name="変えた名前", image=(io.BytesIO(b"not image"), "b.png")),
+        content_type="multipart/form-data",
+    )
+    assert response.status_code == 422
+    db.session.refresh(product)
+    assert product.name == "八幡平マッシュルーム 200g"
+    assert product.image_filename == old_filename
+    assert uploaded_files(app) == [old_filename]
+
+
+def test_ファイル名にパスを入れても一時フォルダーの中にランダムな名前で保存される(
+    app, client, producer, login
+):
+    login(producer)
+    client.post(
+        "/producer/products/new",
+        data=product_data(image=(io.BytesIO(PNG), "../../evil.png")),
+        content_type="multipart/form-data",
+    )
+    product = db.session.scalar(db.select(Product))
+    assert re.fullmatch(r"[0-9a-f]{32}\.png", product.image_filename)
+    assert uploaded_files(app) == [product.image_filename]
+
+
+def test_他人の商品の削除が403なら写真も消えない(
+    app, client, producer, other_producer, login
+):
+    login(producer)
+    client.post(
+        "/producer/products/new",
+        data=product_data(image=(io.BytesIO(PNG), "a.png")),
+        content_type="multipart/form-data",
+    )
+    product = db.session.scalar(db.select(Product))
+    login(other_producer)
+    assert client.post(f"/producer/products/{product.id}/delete").status_code == 403
+    assert uploaded_files(app) == [product.image_filename]
+
+
+def test_保存に失敗したら新しい写真を消す(app, client, producer, login, monkeypatch):
+    login(producer)
+
+    def broken_commit():
+        raise RuntimeError("データベースに書き込めない")
+
+    monkeypatch.setattr(db.session, "commit", broken_commit)
+    with pytest.raises(RuntimeError):
+        client.post(
+            "/producer/products/new",
+            data=product_data(image=(io.BytesIO(PNG), "a.png")),
+            content_type="multipart/form-data",
+        )
+    assert uploaded_files(app) == []

@@ -60,7 +60,7 @@
 - 削除: orders → order_items は cascade、products → order_items は restrict。注文がある商品はビューでも削除を断り、非公開にしてもらう
 - `products.stock` は「いまある数」。支払いが確定したときに減らす
 - いま買える数は `marche/services/inventory.py` の `available_stock(product)` だけで計算する（stock − 作成から35分以内の pending の数量。0未満は0）。Checkout Session の期限は31分
-- 写真は `marche/services/uploads.py` の `save_image()` で確かめ、`marche/static/uploads/` に UUID のファイル名で保存する（設定 `UPLOAD_FOLDER`。テストでは一時フォルダー）
+- 写真は拡張子と 5MB をフォーム（`FileAllowed`・`FileSize`）で、中身を `marche/uploads.py` の `detect_media_type()` で確かめ、`save_image()` で `marche/static/uploads/` に UUID のファイル名で保存する（設定 `UPLOAD_FOLDER`。テストでは一時フォルダー）
 
 ### 画面と URL
 

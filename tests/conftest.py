@@ -99,21 +99,18 @@ def admin(app):
 
 
 @pytest.fixture
-def make_product(app):
-    def do_make(producer, **kwargs):
-        values = {
-            "name": "ほうれん草 1束",
-            "price": 180,
-            "stock": 30,
-            "is_published": True,
-        }
+def make_product(producer):
+    """商品を作る。既定は producer の公開中の商品。owner と各カラムを引数で変えられる"""
+
+    def make(owner=None, **kwargs):
+        values = {"name": "ほうれん草", "price": 200, "stock": 10, "is_published": True}
         values.update(kwargs)
-        product = Product(producer_id=producer.id, **values)
+        product = Product(producer=owner or producer, **values)
         db.session.add(product)
         db.session.commit()
         return product
 
-    return do_make
+    return make
 
 
 @pytest.fixture

@@ -2,7 +2,7 @@
 {% block title %}出品管理 | はちまん産直マルシェ{% endblock %}
 {% block content %}
 <h1>出品管理</h1>
-<p><a href="{{ url_for('producer.new_product') }}" role="button">商品を登録する</a></p>
+<p><a href="{{ url_for('producer.new') }}" role="button">商品を登録する</a></p>
 {% if products %}
 <div class="overflow-auto">
 <table>
@@ -17,12 +17,12 @@
       <td>{{ p.stock }}</td>
       <td>{{ "公開中" if p.is_published else "非公開" }}</td>
       <td>
-        <a href="{{ url_for('producer.edit_product', product_id=p.id) }}">編集</a>
-        <form method="post" action="{{ url_for('producer.toggle_product', product_id=p.id) }}" style="display:inline">
+        <a href="{{ url_for('producer.edit', product_id=p.id) }}">編集</a>
+        <form method="post" action="{{ url_for('producer.toggle', product_id=p.id) }}" style="display:inline">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="secondary outline">{{ "非公開にする" if p.is_published else "公開する" }}</button>
         </form>
-        <form method="post" action="{{ url_for('producer.delete_product', product_id=p.id) }}" style="display:inline"
+        <form method="post" action="{{ url_for('producer.delete', product_id=p.id) }}" style="display:inline"
               onsubmit="return confirm('この商品を削除しますか？')">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit" class="contrast outline">削除</button>
