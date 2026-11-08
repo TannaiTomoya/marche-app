@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}全ての注文 | はちまん産直マルシェ{% endblock %}
+{% block content %}
+<h1>全ての注文</h1>
+<nav>
+  <ul>
+    <li><a href="{{ url_for('admin.orders') }}" {% if not status %}aria-current="page"{% endif %}>すべて</a></li>
+    {% for value, label in status_labels.items() %}
+      <li><a href="{{ url_for('admin.orders', status=value) }}" {% if status == value %}aria-current="page"{% endif %}>{{ label }}</a></li>
+    {% endfor %}
+  </ul>
+</nav>
+{% if orders %}
+<div class="overflow-auto">
+<table>
+  <thead>
+    <tr><th>注文番号</th><th>注文者</th><th>注文日時</th><th>合計</th><th>状態</th></tr>
+  </thead>
+  <tbody>
+    {% for order in orders %}
+    <tr>
+      <td><a href="{{ url_for('orders.detail', order_id=order.id) }}">{{ order.id }}</a></td>
+      <td>{{ order.user.name }}<br><small>{{ order.user.email }}</small></td>
+      <td>{{ order.created_at|jdatetime }}</td>
+      <td>{{ order.total_amount|yen }}</td>
+      <td>{{ order.status_label }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p>該当する注文はありません。</p>
+{% endif %}
+{% endblock %}

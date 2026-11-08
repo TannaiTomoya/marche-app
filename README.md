@@ -41,3 +41,4 @@ uv run flask run
 | 整形と検査 | `uv run ruff format .`、`uv run ruff check .` |
 | テーブルの変更を反映 | `uv run flask db migrate -m "説明"` → `uv run flask db upgrade` |
 | 管理者を作る | `uv run flask create-admin` |
+| 開発用の初期データを入れる（全データを消して入れ直す。`FLASK_DEBUG=1` のときだけ動く。本番では使わない） | `uv run flask seed` |

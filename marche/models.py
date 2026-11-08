@@ -103,6 +103,8 @@ class Order(db.Model):
     stripe_checkout_session_id: Mapped[str | None] = mapped_column(
         String(255), unique=True
     )
+    # 返金（拡張 E2）で使う。支払いが確定したときに保存する
+    stripe_payment_intent_id: Mapped[str | None] = mapped_column(String(255))
     paid_at: Mapped[datetime | None]
     created_at: Mapped[datetime] = mapped_column(default=now_jst)
 

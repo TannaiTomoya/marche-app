@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}お支払いの中断 | はちまん産直マルシェ{% endblock %}
+{% block content %}
+<h1>お支払いを中断しました</h1>
+{% if order.status == "pending" %}
+  <p>注文番号 {{ order.id }}（{{ order.total_amount|yen }}）は、まだ支払われていません。</p>
+  <p>取り消すと、押さえていた在庫が戻ります。</p>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit">この注文を取り消す</button>
+  </form>
+{% else %}
+  <p>この注文の状態は「{{ order.status_label }}」です。</p>
+{% endif %}
+<p><a href="{{ url_for('orders.detail', order_id=order.id) }}">注文の詳細を見る</a></p>
+{% endblock %}

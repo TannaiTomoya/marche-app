@@ -68,7 +68,7 @@
 
 - URL の接頭辞で持ち主を分ける: `/producer/`（生産者）、`/orders/`（ログインユーザー）、`/cart/`（誰でも）
 - 値を変える操作（削除、公開の切り替え、カートの変更、注文の作成）は POST だけの URL にする。GET で値を変えない
-- 管理者の注文一覧は未決（[screens.md の「未決の点」](docs/design/screens.md)）
+- 管理者の画面は `/admin/` に置き、`@role_required(Role.ADMIN)` で守る。コアは注文一覧（`/admin/orders`）だけ
 
 ### 外部サービスとテスト
 

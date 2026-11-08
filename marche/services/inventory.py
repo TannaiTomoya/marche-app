@@ -1,9 +1,13 @@
+import logging
 from datetime import timedelta
 
-from sqlalchemy import func
+from sqlalchemy import case, func, update
 
 from marche.extensions import db
 from marche.models import Order, OrderItem, OrderStatus, Product, User, now_jst
+from marche.services import mail
+
+logger = logging.getLogger(__name__)
 
 # 支払い待ちの注文が在庫を押さえる時間。Checkout Session の期限（31分）より少し長くする
 HOLD_MINUTES = 35
@@ -72,3 +76,66 @@ def create_order(user: User, cart: dict[int, int]) -> Order:
     db.session.add(order)
     db.session.commit()
     return order
+
+
+def cancel_order(order: Order) -> bool:
+    """支払い待ちのときだけ取り消しにする。取り消せたら True"""
+    result = db.session.execute(
+        update(Order)
+        .where(Order.id == order.id, Order.status == OrderStatus.PENDING)
+        .values(status=OrderStatus.CANCELLED)
+    )
+    db.session.commit()
+    db.session.refresh(order)
+    return result.rowcount == 1
+
+
+def mark_as_paid(order: Order, payment_intent_id: str | None) -> bool:
+    """支払いを確定する。Webhook と完了ページの両方から呼ぶ
+
+    「pending のときだけ paid にする」を1つの UPDATE 文で行う。2回呼ばれても、
+    確定（在庫を減らす・メールを送る）は1回だけになる。確定させたら True
+    """
+    result = db.session.execute(
+        update(Order)
+        .where(Order.id == order.id, Order.status == OrderStatus.PENDING)
+        .values(
+            status=OrderStatus.PAID,
+            paid_at=now_jst(),
+            stripe_payment_intent_id=payment_intent_id,
+        )
+    )
+    if result.rowcount != 1:
+        db.session.rollback()
+        db.session.refresh(order)
+        return False
+
+    for item in order.items:
+        product = db.session.get(Product, item.product_id)
+        if product.stock < item.quantity:
+            # 同時に最後の1個が売れた場合など。対策は拡張 E1
+            logger.warning(
+                "在庫が足りないまま支払いが確定しました order_id=%s product_id=%s",
+                order.id,
+                product.id,
+            )
+        # 読んでから書くと同時の確定で数がずれるので、SQL の中で減らす（0未満にはしない）
+        db.session.execute(
+            update(Product)
+            .where(Product.id == item.product_id)
+            .values(
+                stock=case(
+                    (Product.stock >= item.quantity, Product.stock - item.quantity),
+                    else_=0,
+                )
+            )
+        )
+    db.session.commit()
+    db.session.refresh(order)
+
+    try:
+        mail.send_order_paid(order)
+    except Exception:
+        # メールが送れなくても、支払いの確定は取り消さない
+        logger.exception("注文確認メールを送れませんでした order_id=%s", order.id)
+    return True

@@ -1,10 +1,11 @@
 from flask import Blueprint, abort, flash, redirect, render_template, url_for
 from flask_login import current_user
+from sqlalchemy import func
 
 from marche.decorators import role_required
 from marche.extensions import db
 from marche.forms import ProductForm
-from marche.models import OrderItem, Product, Role
+from marche.models import Order, OrderItem, OrderStatus, Product, Role
 from marche.services.uploads import UploadError, delete_image, save_image
 
 bp = Blueprint("producer", __name__, url_prefix="/producer")
@@ -129,3 +130,24 @@ def delete_product(product_id: int):
     delete_image(filename)
     flash("商品を削除しました")
     return redirect(url_for("producer.products"))
+
+
+@bp.route("/sales")
+@role_required(Role.PRODUCER)
+def sales():
+    """自分の商品ごとの販売数と売上。支払い済みの注文だけを数える"""
+    quantity = func.sum(OrderItem.quantity).label("quantity")
+    amount = func.sum(OrderItem.subtotal).label("amount")
+    rows = db.session.execute(
+        db.select(Product.id, Product.name, quantity, amount)
+        .join(OrderItem, OrderItem.product_id == Product.id)
+        .join(Order, Order.id == OrderItem.order_id)
+        .where(
+            Product.producer_id == current_user.id,
+            Order.status == OrderStatus.PAID,
+        )
+        .group_by(Product.id, Product.name)
+        .order_by(amount.desc(), Product.id)
+    ).all()
+    total = sum(row.amount for row in rows)
+    return render_template("producer/sales.html", rows=rows, total=total)

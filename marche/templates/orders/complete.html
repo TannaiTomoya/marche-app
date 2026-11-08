@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}お支払い | はちまん産直マルシェ{% endblock %}
+{% block head %}
+  {% if order.status == "pending" %}
+    {# 支払いの確定を待つ間、5秒ごとに読み込み直す #}
+    <meta http-equiv="refresh" content="5">
+  {% endif %}
+{% endblock %}
+{% block content %}
+{% if order.status == "paid" %}
+  <h1>ご注文ありがとうございます</h1>
+  <p>お支払いを確認しました。注文番号は <strong>{{ order.id }}</strong> です。確認のメールをお送りしました。</p>
+{% elif order.status == "pending" %}
+  <h1>お支払いを確認しています</h1>
+  <p aria-busy="true">少しお待ちください。このページは5秒ごとに更新されます。</p>
+{% else %}
+  <h1>この注文は取り消されています</h1>
+{% endif %}
+<p><a href="{{ url_for('orders.detail', order_id=order.id) }}">注文の詳細を見る</a></p>
+{% endblock %}

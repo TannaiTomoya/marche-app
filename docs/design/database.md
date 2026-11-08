@@ -37,6 +37,7 @@ erDiagram
         string status "pending / paid / cancelled"
         int total_amount "円"
         string stripe_checkout_session_id "nullable, UK"
+        string stripe_payment_intent_id "nullable"
         datetime paid_at "nullable"
         datetime created_at
     }
@@ -88,6 +89,7 @@ erDiagram
 | status | String(20) | not null, default `pending` | `pending`（支払い待ち）→ `paid`（支払い済み）または `cancelled`（取り消し） |
 | total_amount | Integer | not null | 合計金額（円）。サーバーで明細から計算する |
 | stripe_checkout_session_id | String(255) | nullable, unique | Checkout Session の ID。注文を作った後に Stripe から受け取るので、最初は NULL |
+| stripe_payment_intent_id | String(255) | nullable | 支払いが確定したときに保存する。返金（拡張 E2）で使う |
 | paid_at | DateTime | nullable | 支払いが確定した日時 |
 | created_at | DateTime | not null | 在庫の押さえの時間を数える起点 |
 
