@@ -18,7 +18,14 @@
 
 ## 平日（07 章。Stripe Checkout）
 
-07 章で、カートの「注文して支払いへ進む」から Stripe の決済ページへ移り、支払ったあとに「確認しています」の画面へ戻るようにする。画面と URL は 07 章で決めて、ここに足す。
+カートの「注文して支払いへ進む」から Stripe の決済ページへ303で移り、支払ったあとに「確認しています」の画面へ戻る。
+
+| 画面 | URL | 権限 | 動作 |
+|---|---|---|---|
+| 支払い後の確認 | `/orders/<id>/complete` | 本人・管理者 | 「お支払いを確認しています」。状態・在庫を変えない |
+| 中断 | `/orders/<id>/cancel` | 本人・管理者 | GETで案内、POSTでSessionをexpireしてからpending注文を取り消す |
+
+詳しい権限は [認可ルール](../authorization.md)。取消が成功すると在庫の予約が解除される。expireに失敗した場合は支払い待ちを維持し、注文詳細へ戻る。
 
 カード情報の入力画面は Stripe Checkout（Stripe のサイト）を使うので、アプリでは作らない。
 
@@ -29,7 +36,8 @@
 | `POST /logout` | ログアウト | ログインユーザー | Day4 |
 | `POST /cart/add/<id>` | カートに入れる（数量） | 誰でも | Day4 |
 | `POST /cart/update/<id>` | 数量を変える（0なら外す） | 誰でも | Day4 |
-| `POST /orders/` | カートから支払い待ちの注文を作り、注文詳細へ移る（07 章で Stripe の決済ページへ移る処理を足す） | ログインユーザー | Day4 |
+| `POST /orders/` | カートから支払い待ちの注文とCheckout Sessionを作り、Stripeへ303。失敗時は注文を取り消してカートに戻る | ログインユーザー | 07章 |
+| `POST /orders/<id>/cancel` | Sessionをexpire後、pending注文だけ取り消す | 本人・管理者 | 07章 |
 | `POST /producer/products/<id>/toggle` | 公開 / 非公開 を切り替える | 生産者（所有者） | Day4 |
 | `POST /producer/products/<id>/delete` | 商品を削除する（注文がある商品は削除できない） | 生産者（所有者） | Day4 |
 

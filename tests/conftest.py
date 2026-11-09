@@ -4,12 +4,43 @@ from marche import create_app
 from marche.extensions import db
 from marche.models import Product, Role, User
 
-# 本物の外部サービス（Stripe、拡張で足す Claude API）は、テストでは呼ばない。
-# 決済の章（07 章）で、ここにフェイク（偽物）のクラスを足し、create_app() の設定で差し替える。
+
+class FakePayment:
+    """本物のStripeを呼ばず、呼び出しと失敗を検証する。"""
+
+    def __init__(self):
+        self.created = []
+        self.expired = []
+        self.retrieved = []
+        self.sessions = {}
+        self.error = None
+
+    def create_checkout_session(self, order):
+        if self.error:
+            raise self.error
+        self.created.append(order.id)
+        session_id = f"cs_test_fake_{order.id}"
+        return session_id, f"https://checkout.stripe.test/{session_id}"
+
+    def retrieve_session(self, session_id):
+        self.retrieved.append(session_id)
+        if self.error:
+            raise self.error
+        return self.sessions[session_id]
+
+    def expire_session(self, session_id):
+        self.expired.append(session_id)
+        if self.error:
+            raise self.error
 
 
 @pytest.fixture
-def app(tmp_path):
+def fake_payment():
+    return FakePayment()
+
+
+@pytest.fixture
+def app(tmp_path, fake_payment):
     app = create_app(
         {
             "TESTING": True,
@@ -17,6 +48,7 @@ def app(tmp_path):
             "WTF_CSRF_ENABLED": False,
             # 写真はテストごとの一時フォルダーに保存する（本物の static/uploads を汚さない）
             "UPLOAD_FOLDER": str(tmp_path / "uploads"),
+            "PAYMENT_SERVICE": fake_payment,
         }
     )
     with app.app_context():

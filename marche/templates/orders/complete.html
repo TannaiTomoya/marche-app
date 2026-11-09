@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}お支払いの確認{% endblock %}
+{% block content %}
+<h1>お支払いを確認しています</h1>
+<p>注文番号: {{ order.id }}</p>
+<p><a href="{{ url_for('orders.detail', order_id=order.id) }}">注文の内容を確認する</a></p>
+{% endblock %}

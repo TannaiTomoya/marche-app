@@ -22,7 +22,7 @@
 ## このプロジェクトの決まり
 
 - 文言は日本語。日付は「11月14日(土) 10:00」、金額は「1,200円」（3桁ごとのカンマ＋円）の形式
-- 認可: ログインが必要な画面は `@login_required`。ロールは `marche/decorators.py` の `@role_required(Role.PRODUCER)` で確かめる。**他人のデータ（商品、注文）は、取得したあとに所有者を必ず確かめ、違えば 403 にする**（非公開の商品の詳細は 404）
+- 認可の正本は `docs/authorization.md`。ログインが必要な画面は `@login_required`。ロールは `marche/decorators.py` の `@role_required(Role.PRODUCER)` で確かめる。**他人のデータ（商品、注文）は、取得したあとに所有者を必ず確かめ、違えば 403 にする**（非公開の商品の詳細は 404）
 - フォームは Flask-WTF で作り、CSRF トークンを付ける。Webhook の受け口だけは CSRF の対象外にする
 - 金額と在庫は**サーバー側でデータベースから計算する**。フォームから来た金額は使わない
 - テンプレートで `|safe` と `Markup()` を使わない。AI が作った文章（AI 機能を足した場合）も自動エスケープのまま表示する
@@ -72,6 +72,7 @@
 ### 外部サービスとテスト
 
 - Stripe を呼ぶコードは `marche/services/payment.py` だけに書く（AI 機能を足すなら、Claude API は `marche/services/ai.py` だけ）
-- Stripe は 07 章で足す（まだ無い）: Checkout。金額は注文明細から取り、`jpy` は円のまま渡す。ビューは `current_app.extensions["payment"]` 経由で呼ぶ
-- テストでは本物の API を呼ばず、`create_app({"PAYMENT_SERVICE": FakePayment()})` のように設定でフェイクに差し替える（フェイクも 07 章で足す）
+- Stripe Checkoutを実装済み。金額は注文明細から取り、`jpy` は円のまま渡す。ビューは `current_app.extensions["payment"]` 経由で呼ぶ。Session期限は31分、中断時はexpire成功後にpending注文を取り消す。
+- 確認画面は表示だけ。07章ではStripeの支払い状態取得による確定、Webhook、在庫減算を行わない。
+- テストでは本物の API を呼ばず、`create_app({"PAYMENT_SERVICE": FakePayment()})` のように設定でフェイクに差し替える。
 - （AI 機能を足した場合）AI の出力はそのまま保存・公開しない。フォームの欄に入れるだけにし、人が確認して「保存」を押したときに初めて保存する

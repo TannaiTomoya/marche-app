@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}お支払いの中断{% endblock %}
+{% block content %}
+<h1>お支払いを中断しました</h1>
+<p>注文番号: {{ order.id }} ／ {{ order.status_label }}</p>
+{% if order.status == 'pending' %}
+<p>注文を取り消す場合は、下のボタンを押してください。</p>
+<form method="post" action="{{ url_for('orders.cancel', order_id=order.id) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button type="submit">この注文を取り消す</button>
+</form>
+{% endif %}
+<a href="{{ url_for('orders.detail', order_id=order.id) }}">注文の内容を確認する</a>
+{% endblock %}
