@@ -72,3 +72,12 @@ def create_order(user: User, cart: dict[int, int]) -> Order:
     db.session.add(order)
     db.session.commit()
     return order
+
+
+def cancel(order: Order) -> bool:
+    """支払い待ちだけを取り消す。決済Sessionの失効は呼び出し元で先に行う。"""
+    if order.status != OrderStatus.PENDING:
+        return False
+    order.status = OrderStatus.CANCELLED
+    db.session.commit()
+    return True

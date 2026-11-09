@@ -16,7 +16,9 @@ def put_in_cart(client, product, quantity):
 # --- 注文（正常、T9） ---
 
 
-def test_カートから注文を作れる(client, producer, customer, login, make_product):
+def test_カートから注文を作れる(
+    client, producer, customer, login, make_product, fake_payment
+):
     tomato = make_product(producer, name="トマト", price=300)
     miso = make_product(producer, name="味噌", price=1300)
     login(customer)
@@ -24,9 +26,13 @@ def test_カートから注文を作れる(client, producer, customer, login, ma
     put_in_cart(client, miso, 1)
     response = client.post("/orders/")
     order = all_orders()[0]
-    # 05 章では Stripe はまだ呼ばない。注文詳細へ移る
-    assert response.status_code == 302
-    assert response.headers["Location"] == f"/orders/{order.id}"
+    assert response.status_code == 303
+    assert (
+        response.headers["Location"]
+        == f"https://checkout.stripe.test/cs_test_fake_{order.id}"
+    )
+    assert order.stripe_checkout_session_id == f"cs_test_fake_{order.id}"
+    assert fake_payment.created == [order.id]
     assert order.user_id == customer.id
     assert order.status == OrderStatus.PENDING
     assert order.total_amount == 300 * 2 + 1300
