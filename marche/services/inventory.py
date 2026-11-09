@@ -75,9 +75,15 @@ def create_order(user: User, cart: dict[int, int]) -> Order:
 
 
 def cancel(order: Order) -> bool:
-    """支払い待ちだけを取り消す。決済Sessionの失効は呼び出し元で先に行う。"""
-    if order.status != OrderStatus.PENDING:
-        return False
-    order.status = OrderStatus.CANCELLED
+    """支払い待ちだけを取り消す。決済Sessionの失効は呼び出し元で先に行う。
+
+    確かめると書くを1つの UPDATE にし、同時に確定した注文を上書きしない。
+    """
+    result = db.session.execute(
+        db.update(Order)
+        .where(Order.id == order.id, Order.status == OrderStatus.PENDING)
+        .values(status=OrderStatus.CANCELLED)
+    )
     db.session.commit()
-    return True
+    db.session.refresh(order)
+    return result.rowcount == 1

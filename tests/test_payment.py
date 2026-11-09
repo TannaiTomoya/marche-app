@@ -4,6 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 import stripe
+from sqlalchemy.orm.attributes import set_committed_value
 
 from marche.extensions import db
 from marche.models import Order, OrderStatus
@@ -76,6 +77,25 @@ def test_支払い待ち以外は取り消しもSession失効もしない(
     client.post(f"/orders/{order.id}/cancel")
     assert order.status == status
     assert fake_payment.expired == []
+
+
+def test_取消はDBの支払い待ちだけを更新する(order):
+    assert inventory.cancel(order) is True
+    assert order.status == OrderStatus.CANCELLED
+    assert inventory.cancel(order) is False
+    assert order.status == OrderStatus.CANCELLED
+
+
+@pytest.mark.parametrize("status", [OrderStatus.PAID, OrderStatus.CANCELLED])
+def test_読み込み後にDBで状態が変わった注文は取り消さない(order, status):
+    db.session.execute(
+        db.update(Order).where(Order.id == order.id).values(status=status)
+    )
+    db.session.commit()
+    # 別のリクエストが先に確定させた状況（手元のオブジェクトは支払い待ちのまま）
+    set_committed_value(order, "status", OrderStatus.PENDING)
+    assert inventory.cancel(order) is False
+    assert order.status == status
 
 
 def test_Session無しの支払い待ちも取り消せる(
