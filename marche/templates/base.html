@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}はちまん産直マルシェ{% endblock %}</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <style>
+    /* スマートフォンの幅では、メニューを次の行に回し、文字を1字ずつ折り返さない */
+    header nav, header nav ul { flex-wrap: wrap; }
+    header nav li, header nav button { white-space: nowrap; }
+    /* 表は商品名の列だけ折り返す。はみ出した分は表の中で横にスクロールする */
+    th, td:not(:first-child) { white-space: nowrap; }
+    td:first-child { min-width: 9em; }
+  </style>
   {% block head %}{% endblock %}
 </head>
 <body>
@@ -12,7 +20,11 @@
     <nav>
       <ul><li><a href="{{ url_for('shop.index') }}"><strong>はちまん産直マルシェ</strong></a></li></ul>
       <ul>
+        <li><a href="{{ url_for('cart.index') }}">カート</a></li>
         {% if current_user.is_authenticated %}
+          {% if current_user.is_producer %}
+            <li><a href="{{ url_for('producer.index') }}">出品管理</a></li>
+          {% endif %}
           <li>{{ current_user.name }}さん（{{ current_user.role_label }}）</li>
           <li>
             <form method="post" action="{{ url_for('auth.logout') }}" style="margin:0">

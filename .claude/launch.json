@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "marche",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": ["run", "flask", "run", "--debug"],
+      "port": 8000
+    }
+  ]
+}
