@@ -37,7 +37,6 @@ erDiagram
         string status "pending / paid / cancelled"
         int total_amount "円"
         string stripe_checkout_session_id "nullable, UK"
-        string stripe_payment_intent_id "nullable"
         datetime paid_at "nullable"
         datetime created_at
     }
@@ -89,7 +88,6 @@ erDiagram
 | status | String(20) | not null, default `pending` | `pending`（支払い待ち）→ `paid`（支払い済み）または `cancelled`（取り消し） |
 | total_amount | Integer | not null | 合計金額（円）。サーバーで明細から計算する |
 | stripe_checkout_session_id | String(255) | nullable, unique | Checkout Session の ID。注文を作った後に Stripe から受け取るので、最初は NULL |
-| stripe_payment_intent_id | String(255) | nullable | 支払いが確定したときに保存する。返金（拡張 E2）で使う |
 | paid_at | DateTime | nullable | 支払いが確定した日時 |
 | created_at | DateTime | not null | 在庫の押さえの時間を数える起点 |
 
@@ -124,6 +122,8 @@ SQLite は、設定しないと restrict を確かめない（本番の MySQL �
 - 注文時点の商品名と単価を明細に保存する。あとで商品の名前や価格が変わっても、注文の内容は変わらない
 
 ## 在庫の方式
+
+> いま実装してあるのは、支払い待ちの注文を作るところと「いま買える数」の計算まで（04・05 章）。支払いの確定と在庫の減算は 08 章以降の設計で、この課題（main は 07 章まで）では作らない。
 
 **B. `products.stock` は「いまある数」にして、支払いが確定したときに減らす** 方式を採る。
 

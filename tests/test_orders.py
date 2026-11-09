@@ -24,10 +24,9 @@ def test_カートから注文を作れる(client, producer, customer, login, ma
     put_in_cart(client, miso, 1)
     response = client.post("/orders/")
     order = all_orders()[0]
-    # Stripe（フェイク）の決済ページへ 303 で移動する（T13）
-    assert response.status_code == 303
-    assert response.headers["Location"] == f"https://checkout.stripe.test/{order.id}"
-    assert order.stripe_checkout_session_id == f"cs_test_{order.id}"
+    # 05 章では Stripe はまだ呼ばない。注文詳細へ移る
+    assert response.status_code == 302
+    assert response.headers["Location"] == f"/orders/{order.id}"
     assert order.user_id == customer.id
     assert order.status == OrderStatus.PENDING
     assert order.total_amount == 300 * 2 + 1300

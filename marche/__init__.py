@@ -17,15 +17,6 @@ def create_app(config=None):
         UPLOAD_FOLDER=os.path.join(app.root_path, "static", "uploads"),
         # 写真は 5MB まで（フォームの FileSize で確かめる）。それを超える巨大なリクエストは 413 で断る
         MAX_CONTENT_LENGTH=6 * 1024 * 1024,
-        STRIPE_SECRET_KEY=os.environ.get("STRIPE_SECRET_KEY", ""),
-        STRIPE_WEBHOOK_SECRET=os.environ.get("STRIPE_WEBHOOK_SECRET", ""),
-        MAIL_BACKEND=os.environ.get("MAIL_BACKEND", "log"),
-        MAIL_SERVER=os.environ.get("MAIL_SERVER", ""),
-        MAIL_PORT=int(os.environ.get("MAIL_PORT") or 587),
-        MAIL_USE_TLS=os.environ.get("MAIL_USE_TLS", "1") == "1",
-        MAIL_USERNAME=os.environ.get("MAIL_USERNAME", ""),
-        MAIL_PASSWORD=os.environ.get("MAIL_PASSWORD", ""),
-        MAIL_FROM=os.environ.get("MAIL_FROM", "noreply@example.com"),
     )
     if config is not None:
         app.config.update(config)
@@ -42,16 +33,9 @@ def create_app(config=None):
     login_manager.login_view = "auth.login"
     login_manager.login_message = "ログインしてください"
 
-    # 外部サービス。テストでは設定でフェイクを渡す（本物の Stripe を呼ばない）
-    from marche.services import payment
+    from marche.views import auth, cart, orders, producer, shop
 
-    app.extensions["payment"] = app.config.get("PAYMENT_SERVICE") or payment
-    if app.testing:
-        app.extensions["mail_outbox"] = []
-
-    from marche.views import admin, auth, cart, orders, producer, shop, webhooks
-
-    for module in (auth, shop, producer, cart, orders, webhooks, admin):
+    for module in (auth, shop, producer, cart, orders):
         app.register_blueprint(module.bp)
 
     from marche import commands

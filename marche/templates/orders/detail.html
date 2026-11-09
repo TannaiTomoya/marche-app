@@ -27,8 +27,5 @@
   </tfoot>
 </table>
 </div>
-{% if order.status == "pending" and order.user_id == current_user.id %}
-  <p><a href="{{ url_for('orders.cancel', order_id=order.id) }}">この注文を取り消す</a></p>
-{% endif %}
-<p><a href="{{ url_for('orders.index') }}">注文履歴へ戻る</a></p>
+<p><a href="{{ url_for('shop.index') }}">商品一覧へ戻る</a></p>
 {% endblock %}
