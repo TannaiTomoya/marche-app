@@ -92,6 +92,38 @@ def test_create_adminで管理者を作れる(app):
     assert user.role == Role.ADMIN
 
 
+@pytest.mark.parametrize(
+    "target",
+    [
+        "https://evil.example/",
+        "//evil.example/",
+        "/\t/evil.example/",
+        "/\n/evil.example/",
+        "/\r/evil.example/",
+        "/\\evil.example/",
+        "/\x00evil.example/",
+        "/\x7fevil.example/",
+    ],
+)
+def test_危険なnextはログイン後のトップへ戻す(client, customer, target):
+    response = client.post(
+        "/login",
+        query_string={"next": target},
+        data={"email": customer.email, "password": "password"},
+    )
+    assert response.status_code == 302
+    assert response.headers["Location"] == "/"
+
+
+def test_自サイト内のnextへログイン後に戻れる(client, customer):
+    response = client.post(
+        "/login",
+        query_string={"next": "/cart/?from=login"},
+        data={"email": customer.email, "password": "password"},
+    )
+    assert response.headers["Location"] == "/cart/?from=login"
+
+
 def test_本番でSECRET_KEYが無いと起動しない(monkeypatch):
     monkeypatch.delenv("SECRET_KEY", raising=False)
     monkeypatch.delenv("FLASK_DEBUG", raising=False)
